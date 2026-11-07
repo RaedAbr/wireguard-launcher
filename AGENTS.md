@@ -15,6 +15,7 @@ A static page plus one CloudFormation template. The page builds a quick-create l
 - **One VPN per device.** The peer is hardcoded as `10.66.66.2`. This must stay stated in the README, on the landing page, and in the setup flow.
 - **The private device key never leaves the browser.** Only public values go in the AWS link and the return link.
 - **The page has no network access.** The CSP is `default-src 'none'` with no `connect-src`, and the page's privacy claim depends on it. Everything is self-hosted, with no inline scripts, styles or `style` attributes.
+- **The only outside content is the YouTube player, and it loads on click only.** `frame-src` allows `https://www.youtube-nocookie.com` for it. The `wgl-video` meta holds the video link; when it's empty, the Watch section stays hidden. Never load YouTube before the visitor presses play.
 - **An empty `wgl-template` meta means demo mode.** Demo mode must never touch AWS or store anything.
 - **`CleanupRole` must be deleted last.** The self-deletion runs with its permissions, so every resource must depend on it, directly or indirectly. A test enforces this.
 - **The role needs every delete permission for the stack's resources.** Adding a resource type means adding its delete actions. Update the role text in `app.js` and the README if its reach changes.

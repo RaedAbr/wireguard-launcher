@@ -193,6 +193,14 @@ h3 { font-size: 1.05rem; font-weight: 620; letter-spacing: -.01em; }
 .faq details:last-child { border-bottom: 1px solid var(--line); }
 summary { cursor: pointer; font-weight: 600; }
 .faq p { color: var(--muted); padding-top: 8px; animation: rise .35s var(--ease) both; }
+.video { position: relative; aspect-ratio: 16 / 9; max-width: 100%; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); background: var(--panel); box-shadow: 0 18px 50px var(--glow); }
+.video iframe, .video-play, .video-play img { display: block; width: 100%; height: 100%; border: 0; }
+.video-play { position: relative; padding: 0; background: none; border-radius: 0; cursor: pointer; }
+.video-play img { object-fit: cover; transition: transform .5s var(--ease), filter .3s; }
+.video-play:hover img { transform: scale(1.02); filter: brightness(.96); }
+.play { position: absolute; left: clamp(10px, 2.5%, 22px); bottom: clamp(10px, 3.5%, 22px); display: inline-flex; align-items: center; gap: .55em; padding: .6em 1.05em .6em .8em; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font: 600 clamp(.82rem, 1.6vw, 1rem)/1 var(--sans); box-shadow: 0 10px 30px var(--glow); transition: transform .25s var(--ease); }
+.play::before { content: ""; border-style: solid; border-width: .45em 0 .45em .72em; border-color: transparent transparent transparent currentColor; }
+.video-play:hover .play { transform: translateY(-2px) scale(1.04); }
 .final { justify-items: center; text-align: center; padding-block: clamp(40px, 8vw, 72px); }
 .foot { color: var(--muted); font-size: .84rem; padding-top: 28px; border-top: 1px solid var(--line); }
 

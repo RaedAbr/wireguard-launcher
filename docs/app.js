@@ -463,6 +463,25 @@ document.querySelector("[data-scroll]").addEventListener("click", e => {
 });
 window.addEventListener("hashchange", () => swap(showScreen));
 
+/* ---- How-to video: YouTube loads only after the visitor presses play ---- */
+function setupVideo() {
+  const link = document.querySelector('meta[name="wgl-video"]')?.content || "";
+  const id = (link.match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/|\/live\/)([\w-]{11})/) || link.match(/^([\w-]{11})$/) || [])[1];
+  if (!id) return;
+  $("watch").hidden = false;
+  $("video-play").addEventListener("click", () => {
+    const lang = ["fr", "de", "ar"].find(l => (navigator.language || "").startsWith(l)) || "en";
+    const frame = document.createElement("iframe");
+    frame.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&hl=${lang}&cc_lang_pref=${lang}`;
+    frame.title = "How to start your own VPN with WireGuard Launcher";
+    frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+    frame.allowFullscreen = true;
+    frame.referrerPolicy = "strict-origin-when-cross-origin";
+    $("video").replaceChildren(frame);
+  }, { once: true });
+}
+
+setupVideo();
 $("demo").hidden = LIVE;
 acceptReturnLink();
 animateLanding();

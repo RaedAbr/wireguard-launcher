@@ -56,6 +56,8 @@ This is done once, by whoever hosts the page. People who use the page don't do a
 
 2. Push the repository to GitHub, then under **Settings**, **Pages**, deploy from your branch and the `/docs` folder.
 
+To show the how-to video on the landing page, put its YouTube link in the `wgl-video` meta tag in `docs/index.html`. The video loads from YouTube only when someone presses play.
+
 Until a template is published, the page runs as a demo that doesn't touch AWS. Run the script again whenever `template/vpn.yaml` changes.
 
 ## Develop

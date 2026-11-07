@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; frame-src https://www.youtube-nocookie.com; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
 <meta name="description" content="Start your own WireGuard VPN in the country you choose, in your own AWS account, with nothing to install.">
+<meta name="wgl-video" content="https://youtu.be/1qavptqr7a0">
 <meta name="wgl-template" content="https://wireguard-vpn-ondemand.s3.eu-central-1.amazonaws.com/templates/vpn-d6e66e045a38.yaml">
 <title>WireGuard Launcher</title>
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -45,6 +46,18 @@
   </section>
 
   <section id="fleet-home" class="band" hidden></section>
+
+  <section class="band reveal" id="watch" hidden>
+    <p class="eyebrow">Watch</p>
+    <h2>See it in about a minute.</h2>
+    <div class="video" id="video">
+      <button class="video-play" id="video-play" type="button" aria-label="Play the how-to video">
+        <img src="video-poster.jpg" alt="" width="1280" height="720" loading="lazy">
+        <span class="play" aria-hidden="true">Watch · 1:12</span>
+      </button>
+    </div>
+    <p class="muted fine">The video plays from YouTube, which loads only when you press play. Subtitles in English, French, German and Arabic.</p>
+  </section>
 
   <section class="band reveal" id="how">
     <p class="eyebrow">How it works</p>
