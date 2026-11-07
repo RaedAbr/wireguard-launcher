@@ -33,7 +33,7 @@ A static page plus one CloudFormation template. The page builds a quick-create l
 
 ## Known gaps
 
-- Nothing has run on real AWS. The first run must confirm: the role is sufficient for self-deletion, the `/aws/service/canonical/ubuntu/server/26.04/...` path exists, the tag condition on `ec2:TerminateInstances` matches, the template loads from a bucket in another region, and the Outputs link is tappable on a phone.
+- The first real run worked end to end. Still unconfirmed: whether the tag condition on `ec2:TerminateInstances` matches, and whether opt-in regions load the template.
 - Network delete rights cover the whole region. Try tag conditions after a real run.
 - The page's VPN list is per browser and can't show live status.
 - Timer failures are invisible, because the Lambda has no logs. The safety net covers the cost.
