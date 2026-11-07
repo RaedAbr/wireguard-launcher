@@ -117,7 +117,51 @@ h3 { font-size: 1.05rem; font-weight: 620; letter-spacing: -.01em; }
 .steps { list-style: none; counter-reset: s; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .steps li { counter-increment: s; display: grid; gap: 6px; align-content: start; padding: 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; transition: transform .25s var(--ease), border-color .25s; }
 .steps li:hover { transform: translateY(-3px); border-color: var(--accent); }
-.steps li::before { content: counter(s); font: 500 .85rem var(--mono); color: var(--accent); }
+.steps li { position: relative; }
+.steps li::before { content: counter(s); position: absolute; top: 26px; left: 28px; z-index: 1; font: 500 .85rem var(--mono); color: var(--accent); }
+
+/* Step illustrations. Each element's resting style is the finished frame, so
+   with reduced motion (animations off) every card shows its end state. */
+.ill { display: block; width: 100%; height: auto; aspect-ratio: 160 / 96; max-height: 8.5rem; margin-bottom: 8px; background: var(--raise); border-radius: 12px; }
+.ill * { transform-box: fill-box; transform-origin: center; }
+.ill .ln { fill: none; stroke: var(--line); stroke-width: 2; }
+.ill .tx { fill: var(--line); }
+.ill path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+.ill-choose .pick { fill: var(--glow); stroke: var(--accent); stroke-width: 1.5; transform: translateY(24px); animation: pick 5.2s var(--ease) infinite; }
+.ill-choose .dot { fill: var(--accent); animation: pop 5.2s var(--ease) infinite; }
+@keyframes pick { 0%, 22% { transform: translateY(0); } 40% { transform: translateY(48px); } 58%, 100% { transform: translateY(24px); } }
+@keyframes pop { 0%, 58% { transform: scale(0); } 68% { transform: scale(1.5); } 76%, 100% { transform: scale(1); } }
+
+.ill-confirm .check { fill: var(--accent); stroke: var(--accent); stroke-width: 2; animation: check 5.2s var(--ease) infinite; }
+.ill-confirm .tick { stroke: var(--accent-ink); stroke-width: 2.6; stroke-dasharray: 20; stroke-dashoffset: 0; animation: tick 5.2s var(--ease) infinite; }
+.ill-confirm .button { fill: var(--accent); }
+.ill-confirm .button-tx { fill: var(--accent-ink); opacity: .75; }
+.ill-confirm .press { animation: press 5.2s var(--ease) infinite; }
+@keyframes check { 0%, 20% { fill: transparent; stroke: var(--line); } 30%, 100% { fill: var(--accent); stroke: var(--accent); } }
+@keyframes tick { 0%, 26% { stroke-dashoffset: 20; } 40%, 100% { stroke-dashoffset: 0; } }
+@keyframes press { 0%, 56% { transform: scale(1); } 62% { transform: scale(.93); } 70%, 100% { transform: scale(1); } }
+
+.ill-return .ring { fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round; stroke-dasharray: 126; stroke-dashoffset: 0; transform: rotate(-90deg); animation: ring 5.2s ease-in-out infinite; }
+.ill-return .done { stroke: var(--accent); stroke-width: 3; stroke-dasharray: 26; stroke-dashoffset: 0; animation: done 5.2s var(--ease) infinite; }
+.ill-return .arrow { stroke: var(--muted); stroke-width: 2; }
+.ill-return .pill { fill: var(--glow); stroke: var(--accent); stroke-width: 1.5; }
+.ill-return .pill-tx { fill: var(--accent); }
+.ill-return .link { animation: link 5.2s var(--ease) infinite; }
+@keyframes ring { 0% { stroke-dashoffset: 126; } 45%, 100% { stroke-dashoffset: 0; } }
+@keyframes done { 0%, 45% { stroke-dashoffset: 26; } 55%, 100% { stroke-dashoffset: 0; } }
+@keyframes link { 0%, 55% { opacity: 0; transform: translateX(-10px); } 68%, 100% { opacity: 1; transform: none; } }
+
+.ill-connect .qr rect { fill: var(--ink); opacity: .8; }
+.ill-connect .scan { fill: var(--accent); opacity: 0; animation: scan 5.2s ease-in-out infinite; }
+.ill-connect .track { fill: var(--accent); animation: track 5.2s var(--ease) infinite; }
+.ill-connect .knob { fill: var(--panel); transform: translateX(20px); animation: knob 5.2s var(--ease) infinite; }
+@keyframes scan { 0% { opacity: 0; transform: translateY(0); } 6% { opacity: 1; } 40% { opacity: 1; transform: translateY(32px); } 46%, 100% { opacity: 0; transform: translateY(32px); } }
+@keyframes track { 0%, 50% { fill: var(--line); } 60%, 100% { fill: var(--accent); } }
+@keyframes knob { 0%, 50% { transform: translateX(0); } 60%, 100% { transform: translateX(20px); } }
+
+/* Loops wait until the cards scroll into view. */
+.motion .reveal:not(.in) .ill * { animation-play-state: paused; }
 .steps b { font-weight: 620; }
 .steps span { color: var(--muted); font-size: .95rem; }
 .motion .reveal .steps li { opacity: 0; transform: translateY(12px); transition: opacity .55s var(--ease), transform .55s var(--ease), border-color .25s; }
