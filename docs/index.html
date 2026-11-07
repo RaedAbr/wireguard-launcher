@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="Start your own WireGuard VPN in the country you choose, in your own AWS account, with nothing to install.">
+<meta name="wgl-template" content="https://wireguard-vpn-ondemand.s3.eu-central-1.amazonaws.com/templates/vpn-d6e66e045a38.yaml">
+<title>WireGuard Launcher</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<!--page-->
+<header class="top">
+  <a class="brand" href="#" data-home><span class="mark" aria-hidden="true"></span>WireGuard Launcher</a>
+  <a class="btn compact" href="#start">Start a VPN</a>
+</header>
+<p class="demo" id="demo" hidden>Preview: nothing here touches AWS.</p>
+
+<main id="home">
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow rise">Your own VPN, in your own AWS account</p>
+      <h1 class="rise">Be in <span class="sr">any country you choose</span><span class="word" id="word" aria-hidden="true">France</span><br>in about 3 minutes.</h1>
+      <p class="lead rise">Pick a country, confirm in AWS, and connect. Nothing to install, no subscription, and the server removes itself when your time is up.</p>
+      <div class="cta rise">
+        <a class="btn" href="#start">Start a VPN</a>
+        <a class="btn ghost" href="#how" data-scroll>How it works</a>
+      </div>
+    </div>
+    <figure class="tunnel rise" aria-hidden="true">
+      <svg viewBox="0 0 420 240" role="presentation">
+        <path class="track" d="M62 176 C150 176 150 64 240 64 S330 64 358 64"/>
+        <path class="flow" d="M62 176 C150 176 150 64 240 64 S330 64 358 64"/>
+        <circle class="halo" cx="358" cy="64" r="16"/>
+        <circle class="node end" cx="358" cy="64" r="8"/>
+        <circle class="node" cx="62" cy="176" r="8"/>
+        <text class="label" x="62" y="212" text-anchor="middle">Your device</text>
+        <text class="label" id="exit" x="358" y="32" text-anchor="middle">France</text>
+        <text class="tiny" x="214" y="150">encrypted · UDP 51820</text>
+      </svg>
+    </figure>
+  </section>
+
+  <section id="fleet-home" class="band" hidden></section>
+
+  <section class="band reveal" id="how">
+    <p class="eyebrow">How it works</p>
+    <h2>Four steps, no setup.</h2>
+    <ol class="steps">
+      <li><b>Choose</b><span>Pick a country and how long you need the VPN, from 15 minutes to 30 days.</span></li>
+      <li><b>Confirm in AWS</b><span>Sign in to your AWS account, tick one box, and tap Create stack.</span></li>
+      <li><b>Come back</b><span>After about 3 minutes, open the Outputs tab and tap your link.</span></li>
+      <li><b>Connect</b><span>Add the configuration to the WireGuard app. You're done.</span></li>
+    </ol>
+  </section>
+
+  <section class="band reveal">
+    <div class="one-device">
+      <div class="pair" aria-hidden="true"><i></i><i></i></div>
+      <div>
+        <h2>One VPN works on one device.</h2>
+        <p>Each VPN you start is made for a single phone or computer. Don't use its configuration on a second device, because the two would keep disconnecting each other. Need a VPN on another device? Start a separate one from that device, in a different country.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="band reveal">
+    <p class="eyebrow">Why it's different</p>
+    <h2>It's yours, and then it's gone.</h2>
+    <div class="facts">
+      <article><h3>Only you use it</h3><p>The server is in your AWS account, and nobody else's traffic shares it.</p></article>
+      <article><h3>Your key stays with you</h3><p>Your private key is made in this browser. This page has no server, and it's blocked from sending data anywhere.</p></article>
+      <article><h3>It cleans up after itself</h3><p>When your time is up, the VPN deletes itself. You can delete it sooner in AWS.</p></article>
+      <article><h3>You check before anything happens</h3><p>AWS shows you the whole template, and nothing is created until you confirm.</p></article>
+    </div>
+  </section>
+
+  <section class="band reveal">
+    <p class="eyebrow">What you need</p>
+    <div class="needs">
+      <div><h2>An AWS account and the WireGuard app.</h2><p class="muted">That's the whole list. AWS bills your account directly for what you use.</p></div>
+      <dl class="price">
+        <div><dt>While running</dt><dd>About 1 to 3 cents an hour</dd></div>
+        <div><dt>Data you use</dt><dd>Billed by AWS on top</dd></div>
+        <div><dt>After it's deleted</dt><dd>Nothing</dd></div>
+      </dl>
+    </div>
+    <p class="muted fine">Costs are estimates and depend on the country.</p>
+  </section>
+
+  <section class="band reveal">
+    <p class="eyebrow">Questions</p>
+    <h2>Good to know</h2>
+    <div class="faq">
+      <details><summary>Can I use it on my phone?</summary><p>Yes. Do every step in the same phone browser, because that's where your private key is saved.</p></details>
+      <details><summary>Why is there a box to tick in AWS?</summary><p>The VPN includes a small role that lets it delete itself when your time is up. AWS asks you to agree whenever a template creates a role. The role has no password or access keys.</p></details>
+      <details><summary>Can I pause a VPN?</summary><p>No. A stopped server would get a new address and stop matching your configuration, and its disk would keep costing money. Delete it, then start a new one in about 3 minutes.</p></details>
+      <details><summary>What if the VPN can't delete itself?</summary><p>The server has a backup timer. One hour later it shuts down, and AWS removes the server and its disk, so the charges stop.</p></details>
+      <details><summary>Why can't I see all my VPNs here?</summary><p>This page can't read your AWS account. It lists the VPNs started in this browser. Your AWS CloudFormation page always shows them all.</p></details>
+    </div>
+  </section>
+
+  <section class="band final reveal">
+    <h2>Ready when you are.</h2>
+    <a class="btn" href="#start">Start a VPN</a>
+  </section>
+</main>
+
+<main id="flow" hidden>
+  <ol class="route" id="route" aria-label="Progress"></ol>
+  <div id="view"></div>
+</main>
+
+<footer class="foot">
+  <p>Open source. Runs in your own AWS account. Not affiliated with AWS or the WireGuard project.</p>
+</footer>
+<!--/page-->
+<script src="qrcode.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

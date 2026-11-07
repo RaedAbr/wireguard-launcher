@@ -1,0 +1,352 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: One personal WireGuard VPN for one device. It deletes itself when its time is up.
+
+Parameters:
+  ClientPublicKey:
+    Type: String
+    Description: Public key of your device, in URL-safe base64. Filled in by the launcher page.
+    AllowedPattern: "^[A-Za-z0-9_-]{43}$"
+    ConstraintDescription: must be a WireGuard public key in URL-safe base64, without padding
+  Minutes:
+    Type: Number
+    Description: Minutes until everything is deleted automatically, from 15 minutes to 30 days
+    Default: 240
+    MinValue: 15
+    MaxValue: 43200
+  PageUrl:
+    Type: String
+    Description: The launcher page that the finished stack links back to
+    AllowedPattern: "^(https://[^#?\\s]+|http://(localhost|127\\.0\\.0\\.1)(:[0-9]+)?/[^#?\\s]*)$"
+    ConstraintDescription: must be an https address, or a local test address, without a query or fragment
+  InstanceType:
+    Type: String
+    Default: t3.micro
+  ImageId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/26.04/stable/current/amd64/hvm/ebs-gp3/ami-id
+
+Resources:
+  # Everything else depends on this role, directly or indirectly, so that it's
+  # deleted last. The timer's stack deletion runs with these permissions.
+  CleanupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: delete-this-vpn
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ThisStack
+                Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DeleteStack
+                Resource: !Ref AWS::StackId
+              - Sid: PickZone
+                Effect: Allow
+                Action:
+                  - ec2:DescribeAvailabilityZones
+                  - ec2:DescribeInstanceTypeOfferings
+                Resource: "*"
+              - Sid: ThisServer
+                Effect: Allow
+                Action: ec2:TerminateInstances
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    aws:ResourceTag/aws:cloudformation:stack-id: !Ref AWS::StackId
+              - Sid: RemoveNetwork
+                Effect: Allow
+                Action:
+                  - ec2:Describe*
+                  - ec2:DeleteInternetGateway
+                  - ec2:DeleteRoute
+                  - ec2:DeleteRouteTable
+                  - ec2:DeleteSecurityGroup
+                  - ec2:DeleteSubnet
+                  - ec2:DeleteVpc
+                  - ec2:DetachInternetGateway
+                  - ec2:DisassociateRouteTable
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    aws:RequestedRegion: !Ref AWS::Region
+              - Sid: RemoveTimer
+                Effect: Allow
+                Action:
+                  - events:DeleteRule
+                  - events:DescribeRule
+                  - events:ListTargetsByRule
+                  - events:RemoveTargets
+                Resource: !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/${AWS::StackName}-*
+              - Sid: RemoveFunction
+                Effect: Allow
+                Action:
+                  - lambda:DeleteFunction
+                  - lambda:GetFunction
+                  - lambda:InvokeFunction
+                  - lambda:RemovePermission
+                Resource: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-*
+              - Sid: RemoveThisRole
+                Effect: Allow
+                Action:
+                  - iam:DeleteRole
+                  - iam:DeleteRolePolicy
+                  - iam:GetRole
+                  - iam:GetRolePolicy
+                  - iam:ListAttachedRolePolicies
+                  - iam:ListInstanceProfilesForRole
+                  - iam:ListRolePolicies
+                Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AWS::StackName}-*
+
+  # Picks the zone at create time and deletes the stack when the time is up.
+  # It has no logging rights on purpose: a log group would outlive the stack.
+  Cleanup:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.13
+      Handler: index.handler
+      Timeout: 30
+      Role: !GetAtt CleanupRole.Arn
+      Environment:
+        Variables:
+          STACK_ID: !Ref AWS::StackId
+          MINUTES: !Ref Minutes
+      Code:
+        ZipFile: |
+          import json
+          import os
+          import urllib.request
+          from datetime import datetime, timedelta, timezone
+
+          import boto3
+
+
+          def reply(event, status, data=None, reason="See the stack events"):
+              body = json.dumps({
+                  "Status": status,
+                  "Reason": reason,
+                  "PhysicalResourceId": event.get("PhysicalResourceId", "availability-zone"),
+                  "StackId": event["StackId"],
+                  "RequestId": event["RequestId"],
+                  "LogicalResourceId": event["LogicalResourceId"],
+                  "Data": data or {},
+              }).encode()
+              request = urllib.request.Request(
+                  event["ResponseURL"], data=body, method="PUT", headers={"Content-Type": ""})
+              urllib.request.urlopen(request, timeout=10)
+
+
+          def pick_zone(instance_type):
+              ec2 = boto3.client("ec2")
+              zones = ec2.describe_availability_zones(Filters=[
+                  {"Name": "zone-type", "Values": ["availability-zone"]},
+                  {"Name": "state", "Values": ["available"]},
+              ])["AvailabilityZones"]
+              offers = ec2.describe_instance_type_offerings(
+                  LocationType="availability-zone",
+                  Filters=[{"Name": "instance-type", "Values": [instance_type]}],
+              )["InstanceTypeOfferings"]
+              offered = {offer["Location"] for offer in offers}
+              return next(name for name in sorted(z["ZoneName"] for z in zones) if name in offered)
+
+
+          def handler(event, context):
+              if "RequestType" in event:
+                  try:
+                      data = {}
+                      if event["RequestType"] != "Delete":
+                          data["Name"] = pick_zone(event["ResourceProperties"]["InstanceType"])
+                      reply(event, "SUCCESS", data)
+                  except Exception as error:
+                      reply(event, "FAILED", reason=str(error)[:200] or "No zone offers this server type")
+                  return
+              stacks = boto3.client("cloudformation")
+              stack = stacks.describe_stacks(StackName=os.environ["STACK_ID"])["Stacks"][0]
+              ends = stack["CreationTime"] + timedelta(minutes=int(os.environ["MINUTES"]))
+              if datetime.now(timezone.utc) >= ends:
+                  stacks.delete_stack(StackName=os.environ["STACK_ID"])
+
+  Zone:
+    Type: Custom::AvailabilityZone
+    Properties:
+      ServiceToken: !GetAtt Cleanup.Arn
+      InstanceType: !Ref InstanceType
+
+  Timer:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: rate(15 minutes)
+      Targets:
+        - Id: cleanup
+          Arn: !GetAtt Cleanup.Arn
+
+  TimerAccess:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref Cleanup
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt Timer.Arn
+
+  Vpc:
+    Type: AWS::EC2::VPC
+    DependsOn: CleanupRole
+    Properties:
+      CidrBlock: 10.10.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - { Key: Name, Value: !Ref AWS::StackName }
+
+  Gateway:
+    Type: AWS::EC2::InternetGateway
+    DependsOn: CleanupRole
+
+  GatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref Gateway
+
+  Subnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.10.1.0/24
+      AvailabilityZone: !GetAtt Zone.Name
+      MapPublicIpOnLaunch: true
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  DefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: GatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref Gateway
+
+  SubnetRoutes:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Subnet
+      RouteTableId: !Ref RouteTable
+
+  Firewall:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: WireGuard only
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: udp
+          FromPort: 51820
+          ToPort: 51820
+          CidrIp: 0.0.0.0/0
+
+  ReadyHandle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+    DependsOn: CleanupRole
+
+  Server:
+    Type: AWS::EC2::Instance
+    DependsOn: [DefaultRoute, SubnetRoutes]
+    Properties:
+      ImageId: !Ref ImageId
+      InstanceType: !Ref InstanceType
+      SubnetId: !Ref Subnet
+      SecurityGroupIds: [!Ref Firewall]
+      # The safety net below powers the server off, and this makes AWS remove
+      # it and its disk, even if the stack can't delete itself.
+      InstanceInitiatedShutdownBehavior: terminate
+      MetadataOptions:
+        HttpTokens: required
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 8
+            VolumeType: gp3
+            DeleteOnTermination: true
+      Tags:
+        - { Key: Name, Value: !Ref AWS::StackName }
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -euo pipefail
+          signal() {
+            curl -fsS -X PUT -H 'Content-Type:' \
+              --data-binary "{\"Status\":\"$1\",\"UniqueId\":\"wireguard\",\"Data\":\"$2\",\"Reason\":\"$1\"}" \
+              '${ReadyHandle}'
+          }
+          trap 'signal FAILURE setup-failed' ERR
+
+          # Safety net: one hour after the stack should have deleted itself.
+          ENDS=$(date -u -d "+$((${Minutes} + 60)) minutes" '+%Y-%m-%d %H:%M:%S UTC')
+          cat > /etc/systemd/system/vpn-expiry.service <<UNIT
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/bin/systemctl poweroff
+          UNIT
+          cat > /etc/systemd/system/vpn-expiry.timer <<UNIT
+          [Timer]
+          OnCalendar=$ENDS
+          Persistent=true
+          [Install]
+          WantedBy=timers.target
+          UNIT
+          systemctl daemon-reload
+          systemctl enable --now vpn-expiry.timer
+
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -y
+          apt-get install -y wireguard iptables curl
+
+          echo 'net.ipv4.ip_forward = 1' > /etc/sysctl.d/90-wireguard.conf
+          sysctl --system
+
+          NIC=$(ip -o -4 route show to default | awk '{print $5}')
+          CLIENT="$(echo '${ClientPublicKey}' | tr '_-' '/+')="
+          umask 077
+          SERVER_PRIVATE=$(wg genkey)
+          SERVER_PUBLIC=$(echo "$SERVER_PRIVATE" | wg pubkey)
+          cat > /etc/wireguard/wg0.conf <<CONF
+          [Interface]
+          Address = 10.66.66.1/24
+          ListenPort = 51820
+          PrivateKey = $SERVER_PRIVATE
+          PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -A FORWARD -o wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o $NIC -j MASQUERADE
+          PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -D FORWARD -o wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o $NIC -j MASQUERADE
+
+          [Peer]
+          PublicKey = $CLIENT
+          AllowedIPs = 10.66.66.2/32
+          CONF
+
+          systemctl enable --now wg-quick@wg0
+          signal SUCCESS "$(echo "$SERVER_PUBLIC" | tr '+/' '-_' | tr -d '=')"
+
+  Ready:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: Server
+    Properties:
+      Handle: !Ref ReadyHandle
+      Timeout: "600"
+
+Outputs:
+  OpenThisLink:
+    Description: Tap this link in the browser where you started, to get your VPN configuration.
+    # Ready.Data is {"wireguard":"<key>"}, so the fourth piece after splitting
+    # on double quotes is the server's public key. Everything here is public.
+    Value: !Sub
+      - "${PageUrl}#connect=${AWS::Region}.${Ip}.${ServerKey}.${ClientPublicKey}"
+      - Ip: !GetAtt Server.PublicIp
+        ServerKey: !Select [3, !Split ['"', !GetAtt Ready.Data]]
