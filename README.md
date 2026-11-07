@@ -2,7 +2,9 @@
 
 Start your own WireGuard VPN in the country you choose, in your own AWS account, from a web page. There's nothing to install, and the VPN deletes itself when your time is up.
 
-AWS only. Status: not yet tested on real AWS.
+**[Open the launcher](https://raedabr.github.io/wireguard-launcher/)**
+
+AWS only. Tested on real AWS.
 
 > **One VPN works on one device.** Each VPN is made for a single phone or computer. Using its configuration on a second device makes the two disconnect each other. For another device, start a separate VPN from that device, in a different country.
 
@@ -10,7 +12,7 @@ AWS only. Status: not yet tested on real AWS.
 
 You need an AWS account and the [WireGuard app](https://www.wireguard.com/install/).
 
-1. Open the launcher page, pick a country and a duration from 15 minutes to 30 days, and choose **Continue to AWS**.
+1. Open the [launcher page](https://raedabr.github.io/wireguard-launcher/), pick a country and a duration from 15 minutes to 30 days, and choose **Continue to AWS**.
 2. Sign in to AWS, tick the box that says the template may create IAM resources, and choose **Create stack**.
 3. After about 3 minutes, when the stack shows `CREATE_COMPLETE`, open the **Outputs** tab and tap the `OpenThisLink` link.
 4. Save the configuration or scan the QR code with the WireGuard app.
